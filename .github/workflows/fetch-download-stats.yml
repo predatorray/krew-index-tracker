@@ -1,0 +1,52 @@
+name: fetch-download-stats
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 0 0 * * *
+
+jobs:
+  fetch:
+    name: fetch
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: install-deps
+        run: sudo apt-get install -y jq
+      - name: run-script
+        id: run_fetch_script
+        run: bin/fetch-download-stats.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: version
+        run: echo "::set-output name=version::$(date +%F)"
+        id: version
+      - name: release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          release_name: ${{ steps.version.outputs.version }}
+          tag_name: ${{ steps.version.outputs.version }}
+          draft: true
+          prerelease: false
+      - name: upload-manifest-json
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./output/manifest.json
+          asset_name: manifest.json
+          asset_content_type: application/json
+      - name: upload-manifest-version-txt
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./output/manifest-version.txt
+          asset_name: manifest-version.txt
+          asset_content_type: text/plain
