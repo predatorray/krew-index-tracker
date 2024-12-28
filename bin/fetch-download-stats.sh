@@ -8,9 +8,17 @@ readonly GITHUB_API_VERSION='2022-11-28'
 readonly K8S_PLUGINS_URL='https://krew.sigs.k8s.io/.netlify/functions/api/plugins'
 
 readonly OUTPUT_MANIFEST_VERSION=1
-readonly OUTPUT_DIR='output'
-readonly OUTPUT_MANIFEST_VERSION_FILENAME='manifest-version.txt'
-readonly OUTPUT_MANIFEST_FILENAME='manifest.json'
+
+SOURCE="${BASH_SOURCE[0]}"
+while [[ -h "$SOURCE" ]]; do
+    PROG_DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
+    SOURCE="$(readlink "$SOURCE")"
+    [[ $SOURCE != /* ]] && SOURCE="$PROG_DIR/$SOURCE"
+done
+PROG_DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
+readonly REPO_ROOT_DIR="$( cd -P "${PROG_DIR}/.." >/dev/null 2>&1 && pwd )"
+readonly PUBLIC_DIR="${REPO_ROOT_DIR}/public"
+readonly PLUGINS_DIR="${PUBLIC_DIR}/plugins"
 
 readonly tmpfile="$(mktemp)"
 trap 'rm -f -- "$tmpfile"' EXIT
@@ -37,7 +45,7 @@ current_timestamp() {
 }
 
 list_plugins() {
-  curl -sL "$K8S_PLUGINS_URL" | jq -r '.data.plugins[] | [.name, .github_repo] | @tsv'
+  curl -fsSL "$K8S_PLUGINS_URL" | jq -r '.data.plugins[] | [.name, .github_repo] | @tsv'
 }
 
 trim() {
@@ -81,7 +89,7 @@ curl_github_raw() {
       "Authorization: Bearer ${GITHUB_TOKEN}"
     )
   fi
-  curl -sL \
+  curl -fsSL \
     -H 'Accept: application/vnd.github+json' \
     -H "X-GitHub-Api-Version: ${GITHUB_API_VERSION}" \
     "${authorization_header[@]}" \
@@ -99,8 +107,7 @@ curl_github() {
   if [[ ${github_rate_limited_until} -eq 0 ]]; then
     github_rate_limited_until=
 
-    curl_github_raw \
-      "${GITHUB_API_SERVER}/rate_limit" > "${tmpfile}"
+    curl_github_raw '/rate_limit' > "${tmpfile}"
     if [[ "$(jq -r '.resources.core.remaining' < "${tmpfile}")" = '0' ]]; then
       local initial_reset
       initial_reset="$(jq -r '.resources.core.reset' < "${tmpfile}")"
@@ -147,6 +154,8 @@ curl_github() {
     fi
     warn "no remaining request quota. Will be reset at ${github_rate_limited_until}."
   fi
+
+  : > "${tmpfile}"
 }
 
 get_download_count() {
@@ -155,8 +164,10 @@ get_download_count() {
   curl_github "/repos/${github_org_slash_repo}/releases" | jq -c '[.[].assets[].download_count] | add // 0'
 }
 
-make_manifest_json() {
-  local plugin_stats_json='{}'
+main() {
+  mkdir -p "${PLUGINS_DIR}"
+
+  local plugins_json='{}'
   while read -r plugin_name github_org_slash_repo; do
     if [[ -z "${plugin_name}" ]]; then
       continue
@@ -171,22 +182,32 @@ make_manifest_json() {
     download_count="$(get_download_count "${github_org_slash_repo}")"
     info "${plugin_name} = ${download_count} downloads"
 
+    local plugin_stats_json='{}'
+    local plugin_stats_json_file="${PLUGINS_DIR}/${plugin_name}.json"
+    if [[ -f "${plugin_stats_json_file}" ]]; then
+      plugin_stats_json="$(cat "${plugin_stats_json_file}")"
+    else
+      plugin_stats_json='{}'
+    fi
     plugin_stats_json=$(echo "${plugin_stats_json}" | jq -rc \
       --arg downloads "${download_count}" \
+      --arg fetch_date "$(date +%F)" \
       --arg plugin_name "${plugin_name}" \
-      '. + { ($plugin_name): { "downloads": $downloads | tonumber } }')
+      '{ "pluginName": $plugin_name, "stats": (.stats + { ($fetch_date): { "downloads": $downloads | tonumber } }) }')
+
+    echo -n "${plugin_stats_json}" > "${plugin_stats_json_file}"
+
+    plugin_stats_json_url="plugins/${plugin_name}.json"
+    plugins_json=$(echo "${plugins_json}" | jq -rc \
+      --arg plugin_name "${plugin_name}" \
+      --arg plugin_stats_json_url "${plugin_stats_json_url}" \
+      '. + { ($plugin_name): { "downloads_url": $plugin_stats_json_url } }')
   done < <(list_plugins)
 
-  echo -n "${plugin_stats_json}" | jq -rc \
+  echo -n "${plugins_json}" | jq -rc \
     --arg version "${OUTPUT_MANIFEST_VERSION}" \
     --arg timestamp "$(current_timestamp)" \
-    '{ "version": $version | tonumber, "timestamp": $timestamp | tonumber, "plugins": . }'
-}
-
-main() {
-  mkdir -p "$OUTPUT_DIR"
-  make_manifest_json > "${OUTPUT_DIR}/${OUTPUT_MANIFEST_FILENAME}"
-  echo "$OUTPUT_MANIFEST_VERSION" > "${OUTPUT_DIR}/${OUTPUT_MANIFEST_VERSION_FILENAME}"
+    '{ "version": $version | tonumber, "timestamp": $timestamp | tonumber, "plugins": . }' > "${PUBLIC_DIR}/plugins.json"
 }
 
 main "$@"
