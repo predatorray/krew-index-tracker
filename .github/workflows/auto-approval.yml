@@ -1,0 +1,16 @@
+name: Auto approval
+
+on: pull_request_target
+
+jobs:
+  auto-approve:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    if: github.actor == 'github-actions' && github.event.label.name == 'auto-fetch'
+    steps:
+      - name: merge-pr
+        run: |
+          gh merge pr "${PR_NUMBER}" -d -s
+        env:
+          PR_NUMBER: ${{ github.event.number }}
