@@ -7,9 +7,12 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
-    if: github.actor == 'github-actions' && github.event.label.name == 'auto-fetch'
     steps:
+      - name: print-author
+        run: |
+          echo "This PR is opened by ${{ github.event.pull_request.user.login }}."
       - name: merge-pr
+        if: github.event.pull_request.user.login == 'github-actions' && github.event.label.name == 'auto-fetch'
         run: |
           gh merge pr "${PR_NUMBER}" -d -s
         env:
