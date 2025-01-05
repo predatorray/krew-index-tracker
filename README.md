@@ -1,46 +1,35 @@
-# Getting Started with Create React App
+# [Krew Index Tracker][1]
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+[![License](https://img.shields.io/github/license/predatorray/krew-index-tracker)][2]
+[![Build Status](https://img.shields.io/github/actions/workflow/status/predatorray/krew-index-tracker/ci.yml?branch=main)][3]
 
-## Available Scripts
+Krew Index Tracker is a tool that monitors and tracks the download statistics of Krew plugins.
 
-In the project directory, you can run:
+It is [available on GitHub Pages][1].
 
-### `npm start`
+## How it works
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+1. [A GitHub workflow][4] is triggered at 00:00 UTC every day.
+2. It lists all the available plugins from Krew and fetches the download count of each of them using GitHub Release API.
+3. Then, it generates JSON files containing the download stats and creates an auto-approved pull request.
+4. Finally, after all the required checks pass and pull request is auto-merged, [another GitHub Workflow][5] publishes it to GitHub Pages.
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+## Screenshot
 
-### `npm test`
+![screenshot](https://github.com/predatorray/krew-index-tracker/blob/assets/screenshot.png?raw=true)
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Support & Bug Report
 
-### `npm run build`
+If you find any bugs or have suggestions, please feel free to [open an issue][6].
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## License
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+This project is licensed under the [MIT License][2].
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
 
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
-
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
+[1]: https://predatorray.github.io/krew-index-tracker/
+[2]: https://github.com/predatorray/krew-index-tracker/blob/main/LICENSE
+[3]: https://github.com/predatorray/krew-index-tracker/actions/workflows/ci.yml
+[4]: https://github.com/predatorray/krew-index-tracker/actions/workflows/fetch-download-stats.yml
+[5]: https://github.com/predatorray/krew-index-tracker/actions/workflows/deploy.yml
+[6]: https://github.com/predatorray/krew-index-tracker/issues/new
