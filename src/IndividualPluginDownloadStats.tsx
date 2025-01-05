@@ -54,6 +54,16 @@ function StatsLineChart({ dataset, labelY }: {
     });
   }, []);
 
+  const minY = useMemo(() => {
+    return dataset.map(d => d.y).filter(y => y && !Number.isNaN(y)).reduce((a, b) => a ? Math.min(a, b) : b, 0);
+  }, [dataset]);
+
+  const maxY = useMemo(() => {
+    return dataset.map(d => d.y).filter(y => y && !Number.isNaN(y)).reduce((a, b) => a ? Math.max(a, b) : 0, 0);
+  }, [dataset]);
+
+  console.log(`dataset: ${JSON.stringify(dataset)}, minY: ${minY}, maxY: ${maxY}`);
+
   return (
     <Box sx={{ height: "400px", width: "100%" }}>
       <LineChart
@@ -64,15 +74,18 @@ function StatsLineChart({ dataset, labelY }: {
           dataKey: 'x',
           valueFormatter: (date: Date) => date.toDateString(),
         }]}
+        yAxis={[{
+          min: minY === 0 ? undefined : minY,
+          max: maxY === 0 ? undefined : maxY,
+        }]}
         series={[{
           dataKey: 'y',
-          baseline: 0,
           connectNulls: true,
           label: labelY,
-          color: '#121212'
+          color: '#121212',
         }]}
         grid={{ vertical: true, horizontal: true }}
-        margin={{left: 100}}
+        margin={{ left: 100 }}
       />
       <Typography variant="body2" color="text.secondary" component="div" sx={{
         fontSize: 12,
