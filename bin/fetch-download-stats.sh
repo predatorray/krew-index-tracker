@@ -7,6 +7,10 @@ readonly GITHUB_API_VERSION='2022-11-28'
 
 readonly K8S_PLUGINS_URL='https://krew.sigs.k8s.io/.netlify/functions/api/plugins'
 
+declare -ra K8S_PLUGIN_BLOCKLIST=(
+  'crd-sample'
+)
+
 readonly OUTPUT_MANIFEST_VERSION=1
 
 SOURCE="${BASH_SOURCE[0]}"
@@ -42,6 +46,19 @@ error_and_exit() {
 
 current_timestamp() {
   date +%s
+}
+
+element_in_array() {
+    local target="$1"
+    shift # Remove the target from the arguments list, leaving only the array
+
+    local item
+    for item in "$@"; do
+        if [[ "$item" == "$target" ]]; then
+            return 0 # Found
+        fi
+    done
+    return 1 # Not found
 }
 
 list_plugins() {
@@ -172,6 +189,10 @@ main() {
     if [[ -z "${plugin_name}" ]]; then
       continue
     fi
+    if element_in_array "${plugin_name}" "${K8S_PLUGIN_BLOCKLIST[@]}"; then
+      continue
+    fi
+
     info "fetching download stat for ${plugin_name}"
 
     if [[ -z "${github_org_slash_repo}" ]]; then
