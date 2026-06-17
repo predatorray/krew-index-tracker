@@ -175,10 +175,42 @@ curl_github() {
   : > "${tmpfile}"
 }
 
+# Exit status returned by get_download_count when the repository (or its
+# releases) cannot be found on GitHub, i.e. the API responded with HTTP 404.
+readonly EXIT_CODE_REPO_NOT_FOUND=44
+
+# Writes the total number of release-asset downloads for the given GitHub repo
+# to stdout.
+#
+# Returns:
+#   0                          on success
+#   EXIT_CODE_REPO_NOT_FOUND   when the repo is not found on GitHub (HTTP 404)
+# Any other HTTP status is treated as an unexpected error and aborts the script.
 get_download_count() {
   local github_org_slash_repo="$1"
 
-  curl_github "/repos/${github_org_slash_repo}/releases" | jq -c '[.[].assets[].download_count] | add // 0'
+  # Append the HTTP status code to the response body via -w so we can branch on
+  # it. Even though -f makes curl exit non-zero on an error response, -w still
+  # emits the status code, so we rely on it rather than on curl's exit status.
+  local output=''
+  output="$(curl_github -w $'\n%{http_code}' "/repos/${github_org_slash_repo}/releases")" || true
+
+  # Split the trailing status code off the (possibly multi-line) body.
+  local http_status="${output##*$'\n'}"
+  # Stash the body in the shared temp file for jq to consume.
+  printf '%s' "${output%$'\n'*}" > "${tmpfile}"
+
+  case "${http_status}" in
+    200)
+      jq -c '[.[].assets[].download_count] | add // 0' < "${tmpfile}"
+      ;;
+    404)
+      return "${EXIT_CODE_REPO_NOT_FOUND}"
+      ;;
+    *)
+      error_and_exit "unexpected HTTP status ${http_status:-<none>} while fetching releases for ${github_org_slash_repo}"
+      ;;
+  esac
 }
 
 main() {
@@ -200,7 +232,14 @@ main() {
       continue
     fi
 
-    download_count="$(get_download_count "${github_org_slash_repo}")"
+    local fetch_status=0
+    download_count="$(get_download_count "${github_org_slash_repo}")" || fetch_status=$?
+    if [[ "${fetch_status}" -eq "${EXIT_CODE_REPO_NOT_FOUND}" ]]; then
+      warn "repository ${github_org_slash_repo} for plugin ${plugin_name} not found on GitHub (HTTP 404), skipping"
+      continue
+    elif [[ "${fetch_status}" -ne 0 ]]; then
+      error_and_exit "failed to fetch download count for plugin ${plugin_name} (${github_org_slash_repo})"
+    fi
     info "${plugin_name} = ${download_count} downloads"
 
     local plugin_stats_json='{}'
