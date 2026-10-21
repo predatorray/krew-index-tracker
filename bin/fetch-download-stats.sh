@@ -62,7 +62,7 @@ element_in_array() {
 }
 
 list_plugins() {
-  curl -fsSL "$K8S_PLUGINS_URL" | jq -r '.data.plugins[] | [.name, .github_repo] | @tsv'
+  curl -fsSL --retry 5 --retry-delay 10 "$K8S_PLUGINS_URL" | jq -r '.data.plugins[] | [.name, .github_repo] | @tsv'
 }
 
 trim() {
@@ -139,7 +139,7 @@ curl_github() {
     local sleep_secs=$(( github_rate_limited_until - now ))
     if [[ "${sleep_secs}" -gt 0 ]]; then
       info "sleep until ${github_rate_limited_until}"
-      sleep "${github_rate_limited_until}"
+      sleep "${sleep_secs}"
     fi
     github_rate_limited_until=
   fi
@@ -216,6 +216,15 @@ get_download_count() {
 main() {
   mkdir -p "${PLUGINS_DIR}"
 
+  # Fetch the plugin list up front: a failure inside a process substitution
+  # (`< <(list_plugins)`) is not caught by `set -e`, which previously let an
+  # upstream 502 silently produce an empty manifest.
+  local plugin_list
+  plugin_list="$(list_plugins)" || error_and_exit "failed to fetch the plugin list from ${K8S_PLUGINS_URL}"
+  if [[ -z "${plugin_list}" ]]; then
+    error_and_exit "the plugin list fetched from ${K8S_PLUGINS_URL} is empty"
+  fi
+
   local plugins_json='{}'
   while read -r plugin_name github_org_slash_repo; do
     if [[ -z "${plugin_name}" ]]; then
@@ -262,7 +271,11 @@ main() {
       --arg plugin_name "${plugin_name}" \
       --arg plugin_stats_json_url "${plugin_stats_json_url}" \
       '. + { ($plugin_name): { "downloads_url": $plugin_stats_json_url } }')
-  done < <(list_plugins)
+  done <<< "${plugin_list}"
+
+  if [[ "$(echo -n "${plugins_json}" | jq 'length')" -eq 0 ]]; then
+    error_and_exit "no plugin stats were collected, refusing to overwrite ${PUBLIC_DIR}/plugins.json"
+  fi
 
   echo -n "${plugins_json}" | jq -rc \
     --arg version "${OUTPUT_MANIFEST_VERSION}" \
