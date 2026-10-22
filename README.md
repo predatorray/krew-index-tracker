@@ -10,7 +10,7 @@ It is [available on GitHub Pages][1].
 ## How it works
 
 1. [A GitHub workflow][4] is triggered at 00:00 UTC every day.
-2. It lists all the available plugins from Krew and fetches the download count of each of them using GitHub Release API.
+2. It lists all the available plugins from [the Krew plugin index](https://github.com/kubernetes-sigs/krew-index) and fetches the download count of each of them using GitHub Release API.
 3. Then, it generates JSON files containing the download stats and creates an auto-approved pull request.
 4. Finally, after all the required checks pass and pull request is auto-merged, [another GitHub Workflow][5] publishes it to GitHub Pages.
 

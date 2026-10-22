@@ -5,7 +5,10 @@ set -euf -o pipefail
 readonly GITHUB_API_SERVER='https://api.github.com'
 readonly GITHUB_API_VERSION='2022-11-28'
 
-readonly K8S_PLUGINS_URL='https://krew.sigs.k8s.io/.netlify/functions/api/plugins'
+# The plugin list is read straight from the krew-index repository instead of
+# the krew website's API (krew.sigs.k8s.io/.netlify/functions/api/plugins),
+# which has been returning HTTP 502 since 2026-10-20.
+readonly KREW_INDEX_GIT_URL='https://github.com/kubernetes-sigs/krew-index.git'
 
 declare -ra K8S_PLUGIN_BLOCKLIST=(
   'crd-sample'
@@ -25,7 +28,8 @@ readonly PUBLIC_DIR="${REPO_ROOT_DIR}/public"
 readonly PLUGINS_DIR="${PUBLIC_DIR}/plugins"
 
 readonly tmpfile="$(mktemp)"
-trap 'rm -f -- "$tmpfile"' EXIT
+readonly krew_index_dir="$(mktemp -d)"
+trap 'rm -rf -- "$tmpfile" "$krew_index_dir"' EXIT
 
 debug() {
   echo >&2 '[DEBUG]' "$@"
@@ -61,8 +65,39 @@ element_in_array() {
     return 1 # Not found
 }
 
+# Prints the "org/repo" part of a GitHub repository URL, or nothing if the URL
+# does not point to a GitHub repository.
+github_repo_from_url() {
+  local url="$1"
+  if [[ "${url}" =~ ^https://github\.com/([^/?#]+)/([^/?#]+) ]]; then
+    echo -n "${BASH_REMATCH[1]}/${BASH_REMATCH[2]%.git}"
+  fi
+}
+
+# Prints the value of a top-level "spec" field (e.g. "  homepage: <value>") of a
+# plugin manifest, without surrounding quotes.
+get_manifest_spec_field() {
+  local field="$1"
+  local manifest="$2"
+  sed -n -E "s/^  ${field}:[[:space:]]*['\"]?([^'\"]*)['\"]?[[:space:]]*\$/\1/p" "${manifest}" | head -n 1
+}
+
+# Prints one "<plugin name>\t<github org/repo>" line per plugin in krew-index.
+# The repository is taken from the plugin's homepage if it is hosted on GitHub,
+# otherwise from the first GitHub release download URI in the manifest. It is
+# left empty if neither is found.
 list_plugins() {
-  curl -fsSL --retry 5 --retry-delay 10 "$K8S_PLUGINS_URL" | jq -r '.data.plugins[] | [.name, .github_repo] | @tsv'
+  git clone --quiet --depth 1 "${KREW_INDEX_GIT_URL}" "${krew_index_dir}" || return 1
+
+  local manifest plugin_name github_org_slash_repo
+  while read -r manifest; do
+    plugin_name="$(basename "${manifest}" .yaml)"
+    github_org_slash_repo="$(github_repo_from_url "$(get_manifest_spec_field 'homepage' "${manifest}")")"
+    if [[ -z "${github_org_slash_repo}" ]]; then
+      github_org_slash_repo="$(github_repo_from_url "$(grep -m 1 -o -E 'https://github\.com/[^/]+/[^/]+/releases/download/' "${manifest}" || true)")"
+    fi
+    printf '%s\t%s\n' "${plugin_name}" "${github_org_slash_repo}"
+  done < <(find "${krew_index_dir}/plugins" -maxdepth 1 -name '*.yaml' | sort)
 }
 
 trim() {
@@ -220,9 +255,9 @@ main() {
   # (`< <(list_plugins)`) is not caught by `set -e`, which previously let an
   # upstream 502 silently produce an empty manifest.
   local plugin_list
-  plugin_list="$(list_plugins)" || error_and_exit "failed to fetch the plugin list from ${K8S_PLUGINS_URL}"
+  plugin_list="$(list_plugins)" || error_and_exit "failed to fetch the plugin list from ${KREW_INDEX_GIT_URL}"
   if [[ -z "${plugin_list}" ]]; then
-    error_and_exit "the plugin list fetched from ${K8S_PLUGINS_URL} is empty"
+    error_and_exit "the plugin list fetched from ${KREW_INDEX_GIT_URL} is empty"
   fi
 
   local plugins_json='{}'
