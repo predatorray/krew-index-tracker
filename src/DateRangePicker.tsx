@@ -24,24 +24,17 @@ export default function DateRangePicker(
       <DatePicker
         label="From"
         sx={{
-          mx: {
-            xs: 0,
-            sm: 0,
-            md: 1,
-            lg: 1,
-            xl: 1,
-          },
+          mx: 0,
           width: {
             xs: "100%",
-            sm: "45%",
-            md: "100%",
-            lg: "100%",
-            xl: "100%",
+            sm: "100%",
+            md: 170,
           },
         }}
         slotProps={{
           textField: {
-            variant: "standard",
+            variant: "outlined",
+            size: "small",
           },
         }}
         defaultValue={defaultStartDate}
@@ -51,19 +44,11 @@ export default function DateRangePicker(
       <DatePicker
         label="To"
         sx={{
-          mx: {
-            xs: 0,
-            sm: 0,
-            md: 1,
-            lg: 1,
-            xl: 1,
-          },
+          mx: 0,
           width: {
             xs: "100%",
-            sm: "45%",
-            md: "100%",
-            lg: "100%",
-            xl: "100%",
+            sm: "100%",
+            md: 170,
           },
           mt: {
             xs: 2,
@@ -72,7 +57,8 @@ export default function DateRangePicker(
         }}
         slotProps={{
           textField: {
-            variant: "standard",
+            variant: "outlined",
+            size: "small",
           },
         }}
         defaultValue={defaultEndDate}

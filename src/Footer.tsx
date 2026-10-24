@@ -6,14 +6,15 @@ function FooterLink({ children, href }: {
   children?: ReactNode;
 }) {
   return (
-    <Link href={href} target="_blank" underline="hover" rel="noopener">{children}</Link>
+    <Link href={href} target="_blank" underline="hover" rel="noopener" color="text.secondary">{children}</Link>
   );
 }
 
 export default function Footer() {
   return (
-    <Container component="footer" sx={{
+    <Container maxWidth="lg" component="footer" sx={{
       mt: 8,
+      mb: 4,
       fontSize: 12,
       textAlign: "center",
       display: "flex",
@@ -28,20 +29,20 @@ export default function Footer() {
           justifyContent: "center",
         }}
       >
-        <Box><FooterLink href="https://github.com/predatorray/krew-index-tracker">HOME</FooterLink></Box>
-        <Box><FooterLink href="https://github.com/predatorray/krew-index-tracker/issues/new">REPORT</FooterLink></Box>
-        <Box><FooterLink href="https://github.com/predatorray/krew-index-tracker/blob/main/LICENSE">LICENSE</FooterLink></Box>
+        <Box><FooterLink href="https://github.com/predatorray/krew-index-tracker">Home</FooterLink></Box>
+        <Box><FooterLink href="https://github.com/predatorray/krew-index-tracker/issues/new">Report an issue</FooterLink></Box>
+        <Box><FooterLink href="https://github.com/predatorray/krew-index-tracker/blob/main/LICENSE">License</FooterLink></Box>
       </Stack>
       <Box>
         <Typography variant="body2" color="text.secondary" align="center" sx={{
-          my: 1,
-          fontSize: 10,
+          my: 0.5,
+          fontSize: 11,
         }}>
-          Hosted on <b>GitHub Pages</b> & Powered by <b>GitHub Actions</b>
+          Hosted on GitHub Pages · Powered by GitHub Actions
         </Typography>
         <Typography variant="body2" color="text.secondary" align="center" sx={{
-          my: 1,
-          fontSize: 10,
+          my: 0.5,
+          fontSize: 11,
         }}>
           © 2024 under the terms of the <FooterLink href="https://github.com/predatorray/krew-index-tracker/blob/main/LICENSE">MIT license</FooterLink>.
         </Typography>

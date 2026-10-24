@@ -2,11 +2,12 @@ import React, {useCallback, useEffect, useMemo, useState} from "react";
 import PluginSelect from "./PluginSelect";
 import {
   AppBar,
-  Avatar,
   Box,
   Container,
   FormControl,
   IconButton,
+  Paper,
+  SvgIcon,
   Toolbar,
   Tooltip,
   Typography
@@ -17,27 +18,45 @@ import dayjs, {Dayjs} from "dayjs";
 import Footer from "./Footer";
 import DateRangePicker from "./DateRangePicker";
 
+function GithubIcon() {
+  return (
+    <SvgIcon fontSize="small">
+      <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2c-3.2.7-3.87-1.54-3.87-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.69 1.25 3.35.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.76 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.69 5.39-5.25 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z" />
+    </SvgIcon>
+  );
+}
+
 function HeaderBar() {
   return (
-    <Box sx={{ flexGrow: 1 }}>
-      <AppBar position="static" color="primary" sx={{ backgroundColor: 'dark' }}>
-        <Container maxWidth="lg">
-          <Toolbar variant="regular">
-            <Typography variant="h6" color="inherit" component="div" sx={{
-              flexGrow: 1,
-              fontWeight: 600,
-            }}>
-              Krew Index Tracker
-            </Typography>
-            <Tooltip title="Fork me on GitHub">
-              <IconButton sx={{ p: 0 }} href="https://github.com/predatorray/krew-index-tracker" target="_blank">
-                <Avatar alt="Github" sx={{ width: 30, height: 30 }} src={`${process.env.PUBLIC_URL}/github-mark-white.svg`} />
-              </IconButton>
-            </Tooltip>
-          </Toolbar>
-        </Container>
-      </AppBar>
-    </Box>
+    <AppBar position="sticky" color="inherit" elevation={0} sx={{
+      backgroundColor: 'rgba(250, 250, 250, 0.8)',
+      backdropFilter: 'blur(8px)',
+      borderBottom: '1px solid',
+      borderColor: 'divider',
+    }}>
+      <Container maxWidth="lg">
+        <Toolbar disableGutters variant="dense" sx={{ minHeight: 56 }}>
+          <Typography variant="subtitle1" component="div" sx={{
+            flexGrow: 1,
+            fontWeight: 600,
+            letterSpacing: '-0.01em',
+          }}>
+            Krew Index Tracker
+          </Typography>
+          <Tooltip title="View on GitHub">
+            <IconButton
+              aria-label="GitHub"
+              color="inherit"
+              href="https://github.com/predatorray/krew-index-tracker"
+              target="_blank"
+              rel="noopener"
+            >
+              <GithubIcon />
+            </IconButton>
+          </Tooltip>
+        </Toolbar>
+      </Container>
+    </AppBar>
   );
 }
 
@@ -62,10 +81,8 @@ function StatsLineChart({ dataset, labelY }: {
     return dataset.map(d => d.y).filter(y => y && !Number.isNaN(y)).reduce((a, b) => a ? Math.max(a, b) : 0, 0);
   }, [dataset]);
 
-  console.log(`dataset: ${JSON.stringify(dataset)}, minY: ${minY}, maxY: ${maxY}`);
-
   return (
-    <Box sx={{ height: "400px", width: "100%" }}>
+    <Box sx={{ height: 400, width: "100%" }}>
       <LineChart
         dataset={dataset}
         xAxis={[{
@@ -82,19 +99,24 @@ function StatsLineChart({ dataset, labelY }: {
           dataKey: 'y',
           connectNulls: true,
           label: labelY,
-          color: '#121212',
+          color: '#111111',
+          showMark: false,
         }]}
-        grid={{ vertical: true, horizontal: true }}
-        margin={{ left: 100 }}
+        grid={{ horizontal: true }}
+        margin={{ left: 80 }}
+        sx={{
+          '& .MuiChartsGrid-line': { stroke: '#eceef1' },
+          '& .MuiLineElement-root': { strokeWidth: 2 },
+        }}
       />
       <Typography variant="body2" color="text.secondary" component="div" sx={{
         fontSize: 12,
-        fontStyle: 'italic',
         textAlign: "center",
+        mt: 1,
       }}>
         {
           timestamp && (
-            <>Last Updated at: <span style={{ borderBottom: '1px dotted #000' }}>{dayjs.unix(timestamp).toISOString()}</span></>
+            <>Last updated {dayjs.unix(timestamp).format('YYYY-MM-DD HH:mm')}</>
           )
         }
       </Typography>
@@ -149,21 +171,15 @@ function useDateRange() {
 function TitleAndSubtitle() {
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
-      <Typography variant="h4" color="inherit" sx={{
-        my: 2,
-        fontSize: 20,
-        fontWeight: 500,
-        mb: 0,
+      <Typography variant="h1" sx={{
+        fontSize: 28,
+        fontWeight: 600,
+        letterSpacing: '-0.02em',
       }}>
-        Individual Plugin Download Stats
+        Plugin download stats
       </Typography>
-      <Typography variant="body2" color="inherit" sx={{
-        fontSize: 10,
-        color: '#777',
-        minWidth: 320,
-        mt: 1,
-      }}>
-        calculated from total download count of release assets on GitHub
+      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+        Calculated from the total download count of release assets on GitHub.
       </Typography>
     </Box>
   );
@@ -205,61 +221,37 @@ export default function IndividualPluginDownloadStats() {
   return (
     <>
       <HeaderBar/>
-      <Container maxWidth="lg" sx={{
-        textAlign: "left",
-        marginTop: 4,
-      }}>
+      <Container maxWidth="lg" sx={{ textAlign: "left", mt: { xs: 4, md: 6 } }}>
+        <TitleAndSubtitle/>
         <Box sx={{
           display: "flex",
-          justifyContent: "space-between",
-          flexDirection: {
-            xs: "column",
-            sm: "column",
-            md: "column",
-            lg: "row",
-            xl: "row",
-          },
-          mx: 4,
+          flexDirection: { xs: "column", md: "row" },
+          alignItems: { xs: "stretch", md: "center" },
+          gap: 2,
+          mt: 4,
+          mb: 2,
         }}>
-          <TitleAndSubtitle/>
+          <FormControl size="small">
+            <PluginSelect onPlugin={setSelectedPlugin} />
+          </FormControl>
           <Box sx={{
-            display: 'flex',
-            textAlign: 'right',
-            flexDirection: {
-              xs: "column",
-              sm: "column",
-              md: "row",
-              lg: "row",
-              xl: "row",
-            },
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            gap: 2,
           }}>
-            <FormControl variant="outlined" size="small" sx={{ m: 1 }}>
-              <PluginSelect onPlugin={setSelectedPlugin} />
-            </FormControl>
-            <FormControl variant="outlined" size="small" sx={{
-              m: 1,
-              flexDirection: {
-                xs: "column",
-                sm: "row",
-                md: "row",
-                lg: "row",
-                xl: "row",
-              },
-              display: "flex",
-              justifyContent: "space-between",
-            }}>
-              <DateRangePicker
-                defaultStartDate={startDate}
-                defaultEndDate={endDate}
-                setStartDate={setStartDate}
-                setEndDate={setEndDate}
-                startDate={startDate}
-                endDate={endDate}
-              />
-            </FormControl>
+            <DateRangePicker
+              defaultStartDate={startDate}
+              defaultEndDate={endDate}
+              setStartDate={setStartDate}
+              setEndDate={setEndDate}
+              startDate={startDate}
+              endDate={endDate}
+            />
           </Box>
         </Box>
-        <StatsLineChart dataset={dataset} labelY={selectedPlugin?.pluginName}/>
+        <Paper variant="outlined" sx={{ p: { xs: 1, sm: 3 }, pt: { xs: 2, sm: 4 } }}>
+          <StatsLineChart dataset={dataset} labelY={selectedPlugin?.pluginName}/>
+        </Paper>
       </Container>
       <Footer/>
     </>

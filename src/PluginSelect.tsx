@@ -30,12 +30,12 @@ export default function PluginSelect({onPlugin}: {
         width: {
           xs: "100%",
           sm: "100%",
-          md: 300,
-          lg: 300,
-          xl: 300,
+          md: 260,
+          lg: 260,
+          xl: 260,
         },
       }}
-      renderInput={(params) => <TextField {...params} label="Plugin" variant="standard" />}
+      renderInput={(params) => <TextField {...params} label="Plugin" size="small" />}
     />
   );
 }
